@@ -1,0 +1,209 @@
+.equation-editor {
+  padding: 13px;
+  min-width: 700px;
+}
+
+.equation-editor .button-bar {
+  padding-bottom: 13px;
+}
+
+.equation-editor .button-bar:after {
+  clear: both;
+}
+
+.hidden {
+  display: none;
+}
+
+.equation-editor .collapsible.button-group .collapsible-box-toggle {
+  transform: rotate(0deg);
+  -webkit-transform: rotate(0deg);
+  -moz-transform: rotate(0deg);
+  -o-transform: rotate(0deg);
+  -ms-transform: rotate(0deg);
+  background: transparent;
+  position: relative;
+  top: 0;
+  right: 0;
+  width: 20px;
+  color: blue;
+  float: left;
+  margin-right: 3px;
+  text-decoration: none;
+  text-align: center;
+}
+
+.equation-editor .collapsible.button-group .collapsible-box-toggle:before {
+  content: '>';
+}
+
+.equation-editor .collapsible.button-group .collapsible-box-toggle.collapsible-box-toggle-open {
+  transform: rotate(90deg);
+  -webkit-transform: rotate(90deg);
+  -moz-transform: rotate(90deg);
+  -o-transform: rotate(90deg);
+  -ms-transform: rotate(90deg);
+}
+
+.equation-editor .collapsible.button-group:after {
+  clear: both;
+  content: " ";
+  display: block;
+}
+
+.equation-editor .cols .col.math-form {
+  position: fixed;
+  width: 473px;
+}
+
+.equation-editor .cols .col.button-groups {
+  width: 290px;
+  position: absolute;
+  left: 490px;
+}
+
+.equation-editor .mathquill-editable {
+  width: 95%;
+  min-height: 230px;
+  max-height: 294px;
+  background-color: #fff;
+  overflow: scroll;
+}
+
+.equation-editor .mathquill-editable.empty {
+  background-color: #fff;
+}
+
+.equation-editor .button-group header {
+  cursor: pointer;
+}
+
+.equation-editor .button-group .collapsible-box-toggle {
+  line-height: 1em;
+}
+
+.equation-editor .math-button {
+  font-family: 'Symbola';
+  width: 44px;
+  height: 44px;
+  border: 1px solid black;
+  border-radius: 5px;
+  float: left;
+  text-align: center;
+  margin: 0 5px 5px 0;
+  background: #fff;
+  white-space: nowrap;
+}
+
+.equation-editor .math-button:hover {
+  background: #ddd;
+}
+
+.equation-editor .math-button:active {
+  box-shadow: 1px 2px 2px #888888 inset;
+}
+
+.equation-editor .math-button.small-exponent sup {
+  font-size: 0.7em;
+  margin-left: -4px;
+}
+
+.equation-editor .math-button.tall a {
+  margin-top: 4px;
+}
+
+.equation-editor .math-button.integral sup {
+  margin-left: -0.5em;
+}
+
+.equation-editor .math-button a {
+  text-decoration: none;
+  color: #000 !important;
+  margin-top: 12px;
+  height: 44px;
+  display: block;
+  overflow: hidden;
+}
+
+.equation-editor .math-button a.mathquill-rendered-math, .equation-editor .math-button span[mathquill-command-id] {
+  cursor: pointer;
+}
+
+
+
+
+
+
+
+
+.button-groups {
+  width: 380px;
+  margin: 20px auto;
+}
+.button-groups h1, h2, h3, h4 {
+  cursor: pointer;
+}
+.button-groups h2, h3, h4 {
+  font-family: "News Cycle";
+}
+.button-groups h1 {
+  padding: 15px 20px;
+  background-color: #333;
+  font-family: Lobster;
+  font-size: 1.5rem;
+  font-weight: normal;
+  color: #1abc9c;
+}
+.button-groups h1:hover {
+  color: #4afcdc;
+}
+.button-groups h1:first-child {
+  border-radius: 10px 10px 0 0;
+}
+.button-groups h1:last-of-type {
+  border-radius: 0 0 10px 10px;
+}
+.button-groups h1:not(:last-of-type) {
+  border-bottom: 1px dotted #1abc9c;
+}
+.button-groups div, .accordion p {
+  display: none;
+}
+.button-groups h2 {
+  padding: 5px 25px;
+  background-color: #1abc9c;
+  font-size: 1.1rem;
+  color: #333;
+}
+.button-groups h2:hover {
+  background-color: #09ab8b;
+}
+.button-groups h3 {
+  padding: 5px 30px;
+  background-color: #b94152;
+  font-size: .9rem;
+  color: #ddd; 
+}
+.button-groups h3:hover {
+  background-color: #a93142;
+}
+.button-groups h4 {
+  padding: 5px 35px;
+  background-color: #ffc25a;
+  font-size: .9rem;
+  color: #af720a; 
+}
+.button-groups h4:hover {
+  background-color: #e0b040;
+}
+.button-groups p {
+  padding: 15px 35px;
+  background-color: #ddd;
+  font-family: "Georgia";
+  font-size: .8rem;
+  color: #333;
+  line-height: 1.3rem;
+}
+.button-groups .opened-for-codepen {
+  display: block;
+}

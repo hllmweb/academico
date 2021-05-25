@@ -1,0 +1,100 @@
+<?php
+
+if (!defined('BASEPATH'))
+    exit('No direct script access allowed');
+
+class Infantil extends CI_Controller {
+
+    function __construct() {
+        parent::__construct();
+
+        $this->load->model('academico_model', 'academico', TRUE);
+        $this->load->model('geral/secretaria_model', 'secretaria', TRUE);
+        $this->load->model('pajela_model', 'pajela', TRUE);
+
+        $this->load->helper(array('form', 'url', 'html', 'directory'));
+        $this->load->library(array('form_validation', 'Menu_lib', 'diario_lib'));
+    }
+
+    function index() {
+        $data = array(
+            'TituloSistema' => 'COORDENADORES',
+            'titulo' => 'ACADÊMICO',
+            'SubTitulo' => 'PROFESSORES',
+            'curso' => $this->academico->consultas(array('operacao' => 'C')),
+            'side_bar' => false
+        );
+        $this->load->view('113/infantil/index', $data);
+    }
+
+    function grdResultado() {
+
+        switch($this->input->post('tipo')){
+            case 'P': // PROGRESSÃO EDUCACIONAL
+                $data = array(
+                    'alunos' => $this->pajela->aes_diario_infantil(array('operacao' => 'LAT', 'cd_turma' => $this->input->post('turma')))
+                );
+                $this->load->view('113/infantil/grdResultadoProgressao', $data);
+            break;
+            case 'A': // PROGRESSÃO EDUCACIONAL
+                
+                $param = array(
+                    'operacao' => 'LRT', 
+                    'dia' => $this->input->post('dia'), 
+                    'cd_turma' => $this->input->post('turma')
+                );
+                
+                $data = array(
+                    'lista' => $this->pajela->aes_diario_infantil($param)
+                );
+                $this->load->view('113/infantil/grdResultadoAcompanhamentoDiario', $data);
+            break;
+        }
+    }
+
+    function mdlViewAcompanhamento($id) {
+
+        $pmt = explode('-',$id);
+        
+        $data = array(
+            'aluno' => $this->secretaria->aluno_turma(array('operacao'=> 'ALUNO','aluno'=>$pmt[0])),
+           'listar' => $this->pajela->aes_questionario_infantil(array('operacao'=> 'LN','aluno'=>$pmt[0],'questionario'=> $pmt[1])),
+        );
+        $this->load->view('113/infantil/mdlViewAcompanhamento', $data);
+    }
+
+    function impAcompanhamentoInfantil($id) {
+        
+        $pmt = explode('-',$id);
+        
+        $data = array(
+            'aluno' => $this->secretaria->aluno_turma(array('operacao'=> 'ALUNO','aluno'=>$pmt[0])),
+           'listar' => $this->pajela->aes_questionario_infantil(array('operacao'=> 'LN','aluno'=>$pmt[0],'questionario'=> $pmt[1])),
+        );
+        
+        include_once APPPATH . '/third_party/mpdf/mpdf.php';
+        $mpdf = new mPDF();
+        
+        $body = $this->load->view('113/infantil/impAcompanhamentoInfantil', $data, true);
+        $mpdf->AddPage('P', // L - landscape, P - portrait
+                       '', 
+                       '', 
+                       9, 
+                       '', 
+                       5,  // margin_left
+                       5,  // margin right
+                       30, // margin top
+                       30, // margin bottom
+                       0,  // margin header
+                       1); // margin footer
+        $mpdf->SetDisplayMode('fullpage');
+        $mpdf->SetDefaultBodyCSS('line-height', 1.5);
+        $mpdf->SetColumns(1,'J');
+        
+        $mpdf->WriteHTML($body);
+
+        $mpdf->Output('CARTAO_RESPOSTAS-01.pdf','I');
+        
+    }
+
+}

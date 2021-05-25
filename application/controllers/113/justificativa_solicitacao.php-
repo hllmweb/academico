@@ -1,0 +1,364 @@
+<?php
+
+if (!defined('BASEPATH'))
+    exit('No direct script access allowed');
+
+class Justificativa_Solicitacao extends CI_Controller {
+
+    public function __construct() {
+        parent::__construct();
+        $this->load->model("academico/justificativa_solicitacao_model", "solicitacao", true);
+        $this->load->model("academico/justificativa_motivo_model", "motivo", true);
+        $this->load->model("sica/cursos_model", "curso", true);
+        $this->load->model("rh/configuracao_model", "configuracao", true);
+        $this->load->model("rh/professor_model", "professor", true);
+        $this->load->model('sica/turma_tipo_model', 'tipo', TRUE);
+        $this->load->model('sica/t_periodos_model', 'periodos', TRUE);
+
+        $this->load->helper(array("url"));
+        $this->load->library(array("session"));
+    }
+
+    /**
+     * Exibe tela para pesquisa de registros
+     */
+    public function index() {
+        $configuracao = $this->configuracao->listar();
+        $configuracao = $configuracao[0];
+
+        $motivos = $this->motivo->listar();
+        $params = array(
+            array("campo" => "CD_PROFESSOR !=", "valor" => 32),
+            array("campo" => "DT_DEMISSAO", "valor" => null),
+        );
+
+        $data = array(
+            'titulo' => 'SOLICITAÇÃO DE ABONO',
+            'SubTitulo' => 'PESQUISAR',
+            'professores' => $this->professor->filtrar($params),
+            'motivos' => $motivos,
+            "dataInicio" => date('d/m/Y', strtotime($configuracao->DT_INICIO_FOLHA)),
+            "dataFim" => date('d/m/Y', strtotime($configuracao->DT_FIM_FOLHA))
+        );
+
+        $this->load->view("113/justificativa_solicitacao/index", $data);
+    }
+
+    /**
+     * Exibe os dados da pesquisa referentes ao usuário logado
+     */
+    public function gridRegistro() {
+        $params = array();
+
+        //adicionar filtros somente se valores foram preenchidos
+        $motivo = $this->input->post("motivo");
+        if (!empty($motivo)) {
+            $params[] = array("campo" => "CD_MOTIVO", "valor" => $motivo);
+        }
+
+        $professor = $this->input->post("professor");
+        if (!empty($professor)) {
+            $params[] = array("campo" => "CD_PROFESSOR", "valor" => $professor);
+        }
+
+        $aux = explode("-", $this->input->post("data"));
+        if (!empty($aux)) {
+            $params[] = array("campo" => "TRUNC(DT_PENDENCIA) BETWEEN TO_DATE('" . trim($aux[0]) . "','DD/MM/YYYY') "
+                . "AND TO_DATE('" . trim($aux[1]) . "','DD/MM/YYYY')", "valor" => null);
+        }
+
+        $situacao = $this->input->post("situacao");
+        if (!empty($situacao)) {
+            $params[] = array("campo" => "FL_STATUS", "valor" => $situacao);
+        }
+
+        $data = array(
+            "registros" => $this->solicitacao->filtrar($params)
+        );
+
+        $this->load->view("113/justificativa_solicitacao/gridRegistro", $data);
+    }
+
+    public function modalViewRegistro() {
+        $solicitacao = $this->solicitacao->pesquisar_id(array(
+            "campo" => "CD_SOLICITACAO",
+            "valor" => $this->input->get("codigo")
+        ));
+
+        $aulas = $this->solicitacao->listaAulas($solicitacao->CD_SOLICITACAO);
+
+        $data = array(
+            "titulo" => "Solicitação de Abono",
+            "solicitacao" => $solicitacao,
+            "aulas" => $aulas
+        );
+
+        $this->load->view("113/justificativa_solicitacao/modalViewRegistro", $data);
+    }
+
+    /**
+     * Exibe o modal para cadastro, edição, exclusão e detalhes do registro de
+     * solicitação.
+     * 
+     * @param string $params Parametro com operação e código da solicitação 
+     * separado por um hifen; Código somente está ausente no cadastro.
+     */
+    public function modalRegistro() {
+        $operacao = $this->input->get("operacao");
+        $codigo = $this->input->get("codigo");
+
+        $params = array(
+            array("campo" => "DT_DEMISSAO IS NULL"),
+            array("campo" => "CD_PROFESSOR !=", "valor" => 32),
+        );
+
+        $professores = $this->professor->filtrar($params);
+        $motivos = $this->motivo->listar(array("campo" => "NM_MOTIVO", "ordem" => "ASC"));
+
+        $solicitacao = null;
+        if ($operacao !== "I") {
+            $solicitacao = $this->solicitacao->pesquisar_id(array(
+                "campo" => "CD_SOLICITACAO",
+                "valor" => $codigo
+            ));
+
+            $aulas = $this->solicitacao->listaAulas($solicitacao->CD_SOLICITACAO);
+        }
+
+        $data = array(
+            "professores" => $professores,
+            "motivos" => $motivos,
+            "solicitacao" => $solicitacao,
+            "operacao" => $operacao,
+            "aulas" => $aulas,
+        );
+
+        switch ($operacao) {
+            case "I" :
+                $data['titulo'] = "Solicitação de Abono";
+                break;
+            case "E" :
+                $data['titulo'] = "Editar Solicitação";
+                break;
+            case "D" :
+                $data['titulo'] = "Excluir Solicitação";
+                break;
+            case "V" :
+                $data['titulo'] = "Visualizar Solicitação";
+                break;
+        }
+
+        $this->load->view("113/justificativa_solicitacao/modalRegistro", $data);
+    }
+
+    /**
+     * 
+     */
+    public function modalRegistroSolicitacao() {
+        $professor = $this->input->get("professor");
+
+        $params = array(
+            array("campo" => "CD_PROFESSOR", "valor" => $professor),
+        );
+
+        $registros = $this->solicitacao->filtrar($params);
+
+        $data = array(
+            "registros" => $registros
+        );
+
+        $this->load->view("113/justificativa_solicitacao/modalRegistroSolicitacao", $data);
+    }
+
+
+    /*public function formAddMotivo(){
+        $motivo = $this->input->post("txt_motivo");
+
+        $dados = $this->motivo->addMotivo($motivo);
+        $this->load->view("113/justificativa_solicitacao/modalMotivo", $dados);
+    }*/
+
+
+    public function modalMotivo(){
+        $this->load->view("/113/justificativa_solicitacao/modalMotivo");
+    }
+
+    /**
+     * Função que conclui as operações de cadastro, edição e exclusão
+     * 
+     * @param string $operacao Letra indicando qual operação será realizada
+     */
+    public function formManter() {
+        $operacao = $this->input->post("operacao");
+
+        //mensagem de retorno
+        $result = array(
+            "success" => false,
+            "mensagem" => "<label class='text-danger'>Ocorreu um erro ao realizar a operação.</label>"
+        );
+
+        //preparar data para o oracle e obter demais dados do formulário
+        $aux = datetime::createFromFormat('d/m/Y', $this->input->post("dataPendencia"));
+        $dataPendencia = $operacao === "D" ? "" : $aux->format('d-M-y');
+
+        $params = array(
+            "CD_SOLICITACAO" => $this->input->post("codigo"),
+            "CD_MOTIVO" => $this->input->post("motivo"),
+            "DS_SOLICITACAO" => $this->input->post("descricao"),
+            "PROFESSOR" => $this->input->post("professor"),
+            "AULA" => $this->input->post("aulas"),
+            "CD_USU_SOLICITOU" => $this->session->userdata("SGP_CODIGO"),
+            "DT_PENDENCIA" => $dataPendencia
+        );
+
+        //verificar se solicitação possui retorno e impedir edição e exclusão
+        if ($operacao !== "I") {
+            $solicitacao = $this->solicitacao->pesquisar_id(array(
+                "campo" => "CD_SOLICITACAO",
+                "valor" => $this->input->post("codigo")
+            ));
+
+            if ($solicitacao->FL_PARECER == "A" || $solicitacao->FL_PARECER == "R" ||
+                    $solicitacao->FL_STATUS == "A" || $solicitacao->FL_STATUS == "R") {
+                $result['success'] = false;
+                $result['mensagem'] = "<label class='text-danger'>Esta solicitação não pode mais ser editada ou excluída.</label>";
+                $operacao = null;
+            }
+        }
+
+        //executar operaçao
+        switch ($operacao) {
+            case "I":
+                if ($this->solicitacao->adicionar($params)) {
+                    $result['success'] = true;
+                    $result['mensagem'] = '<h3 class="text-success">Solicitação realizada com sucesso.</h3><script>window.location.reload();</script>';
+                }
+                break;
+            case "E":
+                if ($this->solicitacao->alterar($params)) {
+                    $result['success'] = true;
+                    $result['mensagem'] = '<h3 class="text-warning">Dados da solicitação atualizado.</h3><script>window.location.reload();</script>';
+                }
+                break;
+            case "D":
+                if ($this->solicitacao->excluir($params['CD_SOLICITACAO'])) {
+                    $result['success'] = true;
+                    $result['mensagem'] = '<h3 class="text-danger">Solicitação excluída com sucesso.</h3><script>window.location.reload();</script>';
+                }
+                break;
+        }
+
+        echo json_encode($result);
+    }
+
+    /**
+     * Exibe um formulário para filtrar os dados do relatório
+     */
+    public function modalRelatorio() {
+        $configuracao = $this->configuracao->listar();
+        $configuracao = $configuracao[0];
+        $motivos = $this->motivo->listar();
+
+        $professores = $this->professor->filtrar(array(
+            array("campo" => "DT_DEMISSAO", "valor" => null),
+            array("campo" => "CD_PROFESSOR !=", "valor" => 32),
+        ));
+
+        $situacoes = array(
+            "N" => "AGUARDANDO APROVAÇÃO",
+            "I" => "AGUARDANDO INFORMAÇÕES",
+            "A" => "APROVADA",
+            "R" => "REPROVADA"
+        );
+
+        $data = array(
+            "motivos" => $motivos,
+            "professores" => $professores,
+            "situacoes" => $situacoes,
+            "titulo" => "FILTRO RELATÓRIO",
+            "dataInicio" => date('d/m/Y', strtotime($configuracao->DT_INICIO_FOLHA)),
+            "dataFim" => date('d/m/Y', strtotime($configuracao->DT_FIM_FOLHA))
+        );
+
+        $this->load->view($this->session->userdata("SGP_SISTEMA") . "/justificativa_solicitacao/modalRelatorio", $data);
+    }
+
+    /**
+     * Exibe um modal para gerar um relatório de aulas pendentes
+     */
+    public function modalRelatorioAula() {
+        $configuracao = $this->configuracao->listar();
+        $configuracao = $configuracao[0];
+
+        $data = array(
+            'curso' => $this->curso->listar(),
+            'periodo' => $this->periodos->listar(),
+            'tipo' => $this->tipo->listar(),
+            'professor' => $this->professor->listar(),
+            "dataInicio" => date('d/m/Y', strtotime($configuracao->DT_INICIO_FOLHA)),
+            "dataFim" => date('d/m/Y', strtotime($configuracao->DT_FIM_FOLHA))
+        );
+
+        $this->load->view('113/justificativa_solicitacao/modalRelatorioAula', $data);
+    }
+
+    /**
+     * Retorna todas as aulas pendentes do professor em uma data especifica     
+     * 
+     * @return json 
+     */
+    public function obterAulasPendente() {
+        $result = array(
+            'success' => true,
+            'mensagem' => "",
+        );
+
+        $professores = $this->input->post("professor");
+        $aux = datetime::createFromFormat('d/m/Y', $this->input->post("dataPendencia"));
+        $dataPendencia = $aux->format('d-M-y');
+        $aulas = $this->aula->listaPendenteHorario($professores, $dataPendencia);
+
+        if (count($aulas) == 0) {
+            $result['success'] = false;
+            $result['mensagem'] = "<label class='text-danger'>Não existem aulas pendentes para os professores selecionados na data informada.</label>";
+            echo json_encode($result);
+            exit();
+        }
+
+        //verificar se todos os professores possuem aula.
+        $lista = "";
+        foreach ($professores as $professor) {
+            $hasAula = false;
+            $nome = "";
+
+            foreach ($aulas as $aula) {
+                if ($professor == $aula->CD_PROFESSOR) {
+                    $hasAula = true;
+                    break;
+                }
+            }
+
+            //montar lista com nome de todos os professores sem aula.
+            if (!$hasAula) {
+                $aux = $this->professor->pesquisar_id(array(
+                    "campo" => "CD_PROFESSOR",
+                    "valor" => $professor
+                ));
+
+                $lista .= "- " . $aux->NM_PROFESSOR . "<br>";
+            }
+        }
+
+        if (empty($lista)) {
+            $data = array("aulas" => $aulas);
+            $result['success'] = true;
+            $result['mensagem'] = $this->load->view("113/justificativa_solicitacao/gridRegistroAulas", $data, true);
+        } else {
+            $result['success'] = false;
+            $result['mensagem'] = "<label class='text-danger'>Não existem aulas pendentes para os professores:<br><br>" . $lista . "</label>";
+        }
+
+        echo json_encode($result);
+    }
+
+}

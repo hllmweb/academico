@@ -1,0 +1,10 @@
+.BLCQuestao img,
+.mce-content-body p img,
+.mce-content-body ol li img{
+    vertical-align: middle !important;
+}
+
+.vertical-img,
+.vertical-img strong p img{
+    vertical-align: middle !important;
+}

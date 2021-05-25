@@ -1,0 +1,372 @@
+<?php
+
+if (!defined('BASEPATH'))
+    exit('No direct script access allowed');
+
+class Processamento extends CI_Controller {
+
+    function __construct() {
+        parent::__construct();
+
+        $this->load->model('cadastro_model', 'cadastro', TRUE);
+        $this->load->model('prova_model', 'banco', TRUE);
+        $this->load->model('108/questao_model', 'questao', TRUE);
+
+        $this->load->model('academico/questao_opcao_model', 'quest_opcao', TRUE);
+        $this->load->model('sica/aes_prova_questao_model', 'prova_questao', TRUE);
+        $this->load->model('sica/aes_cartoes_lidos_model', 'cartoes', TRUE);
+        $this->load->model('sica/aes_cl_alu_nota_model', 'notas', TRUE);
+
+        $this->load->model('geral/secretaria_model', 'secretaria', TRUE);
+        $this->load->model('geral/colegio_model', 'colegio', TRUE);
+        $this->load->model('sica/t_periodos_model', 'periodo', TRUE);
+
+        $this->load->helper(array('form', 'url', 'html', 'directory'));
+        $this->load->library(array('form_validation', 'session', 'prova_lib', 'gabarito_lib','tracert'));
+
+    }
+
+    function index() {
+        $log = new Tracert();
+        $log->usuario = $this->session->userdata('USU_CODIGO');
+        $log->validar_url();
+
+        $data = array(
+            'curso' => $this->secretaria->aluno_turma(array('operacao'=>'C')),
+            'titulo' => 'GERENCIADOR DE AVALIAÇÕES',
+            'SubTitulo' => 'PROCESSAMENTO',
+            'tipo_prova' => $this->banco->banco_prova(array('operacao'=>'TP')),
+            'periodo' => $this->periodo->listar(),
+            'side_bar' => false
+        );
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/index',$data);
+    }
+
+    function prova_online(){
+
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/prova_online');
+    }
+
+    function reprocessar(){
+        //$prova = $this->input->post('numProva');
+        // if($prova != null || $prova.lenght > 0){
+        //   $p = array(
+        //       'num_prova' => $this->input->post('numProva'),
+        //   );
+
+        //   $data = array(
+        //       'resultado' => $this->banco->reprocessar_prova($p),
+        //   );
+        //   $this->layout=false;
+        //   echo $data;
+        // }
+        
+        $p = array(
+          'num_prova' => $this->input->post('numProva'),
+        );
+
+
+
+
+        $data = array(
+            'resultado' => $this->banco->reprocessar_prova($p),
+        );
+
+        return true;
+    }
+
+    function grdProvaReprocessar(){
+        if($this->input->post('filtro') == 2){
+            $p = array(
+            'operacao' => 'CHECK',
+            'num_prova' => $this->input->post('numProva'),
+            );
+        }
+
+        // FAZ AS CONSULTAS E ARMAZENA NA VARIAVEL RESULTADO
+        $data = array(
+            'resultado' => $this->banco->banco_prova($p),
+        );
+
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/grdReprocessar', $data);
+    }
+    function grdProva() {
+
+        // VERIFICA O TIPO DE FILTRO
+        if($this->input->post('filtro') == 0){
+            $p = array(
+            'operacao' => (($this->input->post('tipo') == 2) ? 'FCN': 'FCNA'),//'FCN',
+             'periodo' => $this->input->post('periodo'),
+          'tipo_prova' => $this->input->post('tipo'),
+               'curso' => $this->input->post('curso'),
+               'serie' => $this->input->post('serie'),
+          'disciplina' => (($this->input->post('disciplina') == '')? NULL : $this->input->post('disciplina')),
+            'bimestre' => (($this->input->post('bimestre') == '')? NULL : $this->input->post('bimestre')),
+           'tipo_nota' => (($this->input->post('tipo_nota') == '')? NULL : $this->input->post('tipo_nota')),
+             'chamada' => (($this->input->post('chamada') == '')? NULL : $this->input->post('chamada')),
+            );
+        }else{
+            $p = array(
+            'operacao' => 'CHECK',
+            'num_prova' => $this->input->post('numProva'),
+            );
+        }
+
+        // FAZ AS CONSULTAS E ARMAZENA NA VARIAVEL RESULTADO
+        $data = array(
+            'resultado' => $this->banco->banco_prova($p),
+        );
+
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/grdProva',$data);
+
+    }
+
+    function anexos($arquivo) {
+
+        $data['caminho'] = '' . $_SERVER['DOCUMENT_ROOT'] . '/academico/upload/prova/';
+        $data['diretorio'] = directory_map($data['caminho']);
+        $file = "" . $arquivo . "";
+        $config['upload_path'] = '' . $_SERVER['DOCUMENT_ROOT'] . '/academico/upload/prova/';
+        $config['allowed_types'] = '*';
+        $config['max_size'] = '0';
+        $config['max_width'] = '0';
+        $config['max_height'] = '0';
+        $config['encrypt_name'] = true;
+
+        $this->load->library('upload', $config);
+        $this->upload->initialize($config);
+
+        if (!$this->upload->do_upload($file)){
+            $dados = array('error' => $this->upload->display_errors());
+            return (array('erro'=> $dados));
+        } else {
+            $dados = $this->upload->data();
+            return (array('erro'=> '', 'file'=> $dados));
+        }
+    }
+
+    function anexo() {
+        $dados = $this->anexos('arquivo');
+
+        // VERIFICA SE HÁ UM ARQUIVO SENDO ENVIADO
+        if($dados['file']['file_name'] != ''){
+            // CAMINHO ABSOLUTO DO ARQUIVO NO SERVIDOR
+            $caminho = '' . $_SERVER['DOCUMENT_ROOT'] . '/academico/upload/prova/'.$dados['file']['file_name'].'';
+            // ABRE O ARQUIVO PARA CONSULTA
+            $ponteiro = fopen($caminho, "r");
+            $registro = 0;
+            //LÊ O ARQUIVO ATÉ CHEGAR AO FIM
+            while (!feof ($ponteiro)) {
+                //LÊ UMA LINHA DO ARQUIVO
+                $linha = fgets($ponteiro, 4096);
+                if($linha != ''){
+                    $param = array(
+                        'prova' => substr($linha,0,10),
+                        'aluno' => substr($linha,10,8),
+                    'respostas' => substr($linha,18,(strlen($linha)-18)),
+                      'usuario' => $this->session->userdata('USU_LOGIN')
+                    );
+                    $r = $this->cartoes->adicionar($param);
+                    $registro = $registro +1;
+                }
+            }
+            //FECHA O PONTEIRO DO ARQUIVO
+            fclose ($ponteiro);
+        }
+        $data = array(
+            'nome' => $dados['file']['orig_name'],
+        'registro' => $registro,
+           'error' => false,
+        );
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/anexos', $data);
+    }
+
+    function frmProcessaGabarito($id) {
+
+        $item = explode('-',$id);
+        //ATUALIZA OS GABARITOS
+        $cartao = new gabarito_lib();
+        $cartao->prova_pai = $item[1];
+        $cartao->correcao();
+
+       // print_r($cartao);exit;
+        sleep(2);
+
+        // PROCESSAR OS CARTÕES RESPOSTAS
+        $p = array(
+            'prova' => $item[1],
+        );
+        $this->cartoes->processar_prova($p);
+
+        if($item[0] == 1){
+
+            $data = array(
+                'listar' => $this->cartoes->prova_detalhe_simulado($item[1]),
+              'original' => $item[1]
+            );
+
+            $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/mdlDetalhesSimulado',$data);
+        }else{
+
+            $data = array(
+                'listar' => $this->cartoes->prova_detalhe($item[1]),
+              'original' => $item[1]
+            );
+
+            $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/mdlDetalhes',$data);
+        }
+
+    }
+
+    function mdlImportar() {
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/mdlImportar',$data);
+    }
+
+    function frmProvaObjetiva($id) {
+
+        $item = explode('-',$id);
+
+        $listar = $this->cartoes->prova_detalhe($item[1]);
+
+        foreach($listar as $l){
+            if($l['P_OBJETIVA'] != ''){
+                $param = array(
+                    'aluno' => $l['CD_ALU_DISC'],
+                 'num_nota' => $l['NUM_NOTA'],
+                     'nota' => $l['P_OBJETIVA'],
+                );
+                if($l['CD_ALU_DISC'] != '' && $l['NOTA'] == ''){
+                    // CASO NÃO HAJA NOTA LANÇADA
+                    $this->notas->adicionar($param);
+                }else{
+                    // ATUALIZA A NOTA
+                    $this->notas->editar($param);
+                }
+            }
+        }
+        // PROCESSAR PROVAS
+        $p = array(
+            'prova' => $item[1],
+        );
+        $this->cartoes->processar_prova($p);
+
+        $data = array(
+            'listar' => $this->cartoes->prova_detalhe($item[1]),
+          'original' => $item[1]
+        );
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/mdlDetalhes',$data);
+    }
+
+    function frmProvaSimulado($id) {
+
+        $item = explode('-',$id);
+
+        $listar = $this->cartoes->prova_detalhe_simulado($item[1]);
+
+        foreach($listar as $l){
+            if($l['ACERTOS'] != ''){
+                $param = array(
+                    'aluno' => $l['CD_ALU_DISC'],
+                 'num_nota' => $l['NUM_NOTA'],
+                     'nota' => ($l['ACERTOS'] * $l['VALOR_QUESTAO']),
+                );
+                //print_r($param);
+                if($l['NOTA'] == ''){
+                    // CASO NÃO HAJA NOTA LANÇADA
+                    $this->notas->adicionar($param);
+                }else{
+                    // ATUALIZA A NOTA
+                    $this->notas->editar($param);
+                }
+            }
+        }
+         $data = array(
+            'listar' => $this->cartoes->prova_detalhe_simulado($item[1]),
+          'original' => $item[1]
+        );
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/mdlDetalhesSimulado',$data);
+    }
+
+    function frmProvaDiscursiva($id) {
+
+        $item = explode('-',$id);
+
+        $listar = $this->cartoes->prova_detalhe($item[1]);
+
+        foreach($listar as $l){
+            if($l['P_OBJETIVA'] != ''){
+                $param = array(
+                    'aluno' => $l['CD_ALU_DISC'],
+                 'num_nota' => $l['NUM_NOTA'],
+                     'nota' => ($l['P_OBJETIVA'] + $l['P_DISCURSIVA']),
+                );
+                //if($l['NOTA'] == ''){
+                //    $this->notas->adicionar($param);
+                //}/else{
+                    $this->notas->editar($param);
+                //}
+            }
+        }
+
+         $data = array(
+            'listar' => $this->cartoes->prova_detalhe($item[1]),
+          'original' => $item[1]
+        );
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/mdlDetalhes',$data);
+    }
+
+    function mdlDetalhes($id) {
+
+        $cod = explode('-',$id);
+
+        $param = array(
+            'operacao' => 'FC',
+            'prova' => $cod[1]
+        );
+
+        $prova = $this->banco->banco_prova($param);
+
+        if($cod[0] == 2){
+
+            $listar = $this->cartoes->prova_detalhe($cod[1]);
+
+
+        }else{
+
+            $listar = $this->cartoes->prova_detalhe_simulado($cod[1]);
+        }
+
+        $data = array(
+            'prova' => $prova,
+            'listar' => $listar,
+          'original' => $cod[1]
+        );
+
+
+        if($cod[0] == 2){
+
+            $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/mdlDetalhes',$data);
+        }else{
+
+            $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/mdlDetalhesSimulado',$data);
+        }
+
+    }
+
+    function frmDetalhesAluno($id){
+
+        $item = explode('-',$id);
+
+        $param = array(
+            'aluno' => $item[0],
+            'prova' => $item[1],
+        );
+
+        $data = array(
+            'aluno' => $this->cartoes->prova_detalhe_aluno($param),
+          'original' => $id
+        );
+        $this->load->view(''.$this->session->userdata('SGP_SISTEMA').'/processamento/frmDetalhesAluno',$data);
+    }
+
+}

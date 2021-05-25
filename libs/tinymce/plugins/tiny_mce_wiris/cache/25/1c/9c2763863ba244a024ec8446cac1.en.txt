@@ -1,0 +1,1 @@
+fraction numerator 10 space plus space 10 space plus space 10 over denominator 20 asterisk times 10 space begin display style 33 over 2 end style end fraction

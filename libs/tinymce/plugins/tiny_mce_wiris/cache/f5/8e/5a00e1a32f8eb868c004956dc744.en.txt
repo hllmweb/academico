@@ -1,0 +1,1 @@
+fraction numerator 10 over denominator 10 space plus space 2 space asterisk times space 100000 space minus space 1242 space end fraction space asterisk times space square root of 1000003
